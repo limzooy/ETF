@@ -12,7 +12,7 @@ Python FastAPI와 Yahoo Finance API를 이용하여 주요 ETF의 기술적 지�
 
 1.  저장소를 복제(clone)합니다.
     ```bash
-    git clone [https://github.com/YourUsername/YourRepoName.git](https://github.com/YourUsername/YourRepoName.git)
+    git clone [https://github.com/limzooy/ETF.git](https://github.com/limzooy/ETF.git)
     cd YourRepoName
     ```
 2.  가상환경을 생성하고 활성화합니다.
