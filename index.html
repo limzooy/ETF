@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETF 투자 대시보드</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Noto Sans KR', sans-serif; background: #f0f2f5; min-height: 100vh; color: #333; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .header { background: #ffffff; border-radius: 12px; padding: 25px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .header h1 { font-size: 2em; font-weight: 700; color: #1a202c; }
+        .controls { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; margin-top: 15px; }
+        .btn { padding: 10px 20px; border: 1px solid #dcdfe6; border-radius: 8px; font-weight: 500; cursor: pointer; transition: all 0.2s ease; font-size: 14px; background: #fff; }
+        select.btn { -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 0.7rem center; background-size: 1em; padding-right: 2.5rem; }
+        .btn:hover { border-color: #4A90E2; }
+        .btn-primary { background: #4A90E2; color: white; border-color: #4A90E2; }
+        .btn-primary:hover { background: #357ABD; border-color: #357ABD; }
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 25px; }
+        .card { background: #ffffff; border-radius: 12px; padding: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); display: flex; flex-direction: column;}
+        .card.full-width { grid-column: 1 / -1; }
+        .card h2 { font-size: 1.3em; font-weight: 700; color: #2d3436; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; flex-shrink: 0; }
+        .card-content { flex-grow: 1; }
+        .metric-grid { display: grid; gap: 15px; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+        .metric { text-align: center; padding: 15px; background: #f8f9fa; border-radius: 10px; }
+        .metric-value { font-size: 1.6em; font-weight: 700; color: #2d3436; line-height: 1.2; }
+        .metric-label { font-size: 0.85em; color: #636e72; font-weight: 500; margin-top: 5px; }
+        .positive { color: #d63031 !important; } .negative { color: #0984e3 !important; }
+        .chart-container { position: relative; height: 400px; margin-top: 10px; }
+        .progress-bar { background: #e9ecef; border-radius: 10px; height: 8px; overflow: hidden; margin: 15px 0 10px; }
+        .progress-bar-fill { background: linear-gradient(90deg, #34d399, #10b981); height: 100%; border-radius: 10px; transition: width 1s ease-in-out; }
+        .loading { display: flex; align-items: center; justify-content: center; min-height: 200px; color: #636e72; }
+        .spinner { border: 3px solid #f3f3f3; border-top: 3px solid #4A90E2; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin-right: 10px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .error { color: #d63031; text-align: center; padding: 20px; background: rgba(214, 48, 49, 0.1); border-radius: 10px; margin: 10px 0; }
+        .strategy-box { padding: 20px; background: #f0f4ff; border-radius: 10px; margin-top: 15px; }
+        .strategy-box .metric-value { font-size: 1.8em; color: #357ABD; }
+        .strategy-box p { font-size: 0.9em; color: #636e72; margin-top: 8px; line-height: 1.5; }
+        .review-item { margin-bottom: 20px; }
+        .review-item h3 { font-size: 1em; color: #1a202c; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+        .review-item p { font-size: 0.95em; color: #4a5568; line-height: 1.6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-chart-pie"></i> ETF 투자 대시보드</h1>
+            <div class="controls">
+                <select id="etf-selector" class="btn">
+                    <option value="069500">KODEX 200</option>
+                    <option value="114800">KODEX 인버스</option>
+                    <option value="122630">KODEX 레버리지</option>
+                    <option value="102110">TIGER 200</option>
+                    <option value="233740">KODEX 코스닥150 레버리지</option>
+                </select>
+                <button id="refresh-btn" class="btn btn-primary"><i class="fas fa-sync-alt"></i> 새로고침</button>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="card">
+                <h2><i class="fas fa-broadcast-tower"></i> 현재 시장 데이터</h2>
+                <div class="card-content">
+                    <div id="market-loading" class="loading"><div class="spinner"></div></div>
+                    <div id="market-data" style="display: none;">
+                        <div class="metric-grid">
+                            <div class="metric"><div id="current-price" class="metric-value">-</div><div class="metric-label">현재가</div></div>
+                            <div class="metric"><div id="price-change" class="metric-value">-</div><div class="metric-label">변동률</div></div>
+                            <div class="metric"><div id="volume" class="metric-value">-</div><div class="metric-label">거래량</div></div>
+                            <div class="metric"><div id="high-52w" class="metric-value">-</div><div class="metric-label">52주 최고</div></div>
+                            <div class="metric"><div id="low-52w" class="metric-value">-</div><div class="metric-label">52주 최저</div></div>
+                            <div class="metric"><div id="high-3m" class="metric-value">-</div><div class="metric-label">3개월 최고</div></div>
+                        </div>
+                        <div class="progress-bar"><div id="price-range-bar" class="progress-bar-fill"></div></div>
+                    </div>
+                    <div id="market-error" class="error" style="display: none;"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><i class="fas fa-lightbulb"></i> 투자 전략 신호</h2>
+                <div class="card-content">
+                    <div id="strategy-loading" class="loading"><div class="spinner"></div></div>
+                    <div id="strategy-data" style="display: none;">
+                        <div class="metric" style="width: 100%; margin-bottom: 10px;">
+                            <div id="buy-recommendation" class="metric-value">-</div><div class="metric-label">매수 추천</div>
+                        </div>
+                        <div style="text-align: center; font-size: 0.9em; color: #636e72;">매수 신호 강도: <span id="signal-strength-text"> -/10</span></div>
+                        <div class="progress-bar"><div id="signal-strength-bar" class="progress-bar-fill"></div></div>
+                        <div class="strategy-box">
+                            <div id="recommended-buy-price" class="metric-value">-</div><p id="buy-price-explanation">-</p>
+                        </div>
+                    </div>
+                    <div id="strategy-error" class="error" style="display: none;"></div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2><i class="fas fa-magnifying-glass-chart"></i> 기술적 분석 리뷰</h2>
+                <div class="card-content">
+                    <div id="review-loading" class="loading"><div class="spinner"></div></div>
+                    <div id="review-data" style="display: none;">
+                        <div class="review-item">
+                            <h3><i class="fas fa-chart-simple" style="color: #3498db;"></i>종합 의견</h3><p id="review-summary">-</p>
+                        </div>
+                        <div class="review-item">
+                            <h3><i class="fas fa-wave-square" style="color: #e67e22;"></i>이동평균선</h3><p id="review-ma">-</p>
+                        </div>
+                        <div class="review-item">
+                            <h3><i class="fas fa-expand-arrows-alt" style="color: #9b59b6;"></i>볼린저밴드</h3><p id="review-bb">-</p>
+                        </div>
+                    </div>
+                    <div id="review-error" class="error" style="display: none;"></div>
+                </div>
+            </div>
+
+            <div class="card full-width">
+                <h2><i class="fas fa-chart-area"></i> 가격 추세 (볼린저밴드, 이동평균선)</h2>
+                <div class="card-content">
+                    <div class="chart-container">
+                        <canvas id="price-trend-chart"></canvas>
+                    </div>
+                </div>
+                </div>
+        </div>
+    </div>
+
+    <script>
+        let priceTrendChart;
+
+        const setLoading = (isLoading) => {
+            document.querySelectorAll('.loading').forEach(el => el.style.display = isLoading ? 'flex' : 'none');
+            document.querySelectorAll('.error').forEach(el => el.style.display = 'none');
+            ['market-data', 'strategy-data', 'review-data'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = isLoading ? 'none' : 'block';
+            });
+        };
+
+        const showError = (message) => {
+            setLoading(false);
+            ['market-error', 'strategy-error', 'review-error'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) { el.textContent = `오류: ${message}`; el.style.display = 'block'; }
+            });
+            ['market-data', 'strategy-data', 'review-data'].forEach(id => {
+                 const el = document.getElementById(id);
+                 if (el) el.style.display = 'none';
+            });
+        };
+        
+        const updateUI = (data) => {
+            document.getElementById('current-price').textContent = data.market_data.current_price.toLocaleString();
+            const changeEl = document.getElementById('price-change');
+            const changePercent = data.market_data.price_change_percent;
+            changeEl.textContent = `${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%`;
+            changeEl.className = `metric-value ${changePercent >= 0 ? 'positive' : 'negative'}`;
+            document.getElementById('volume').textContent = (data.market_data.volume / 1000).toFixed(0) + 'k';
+            document.getElementById('high-52w').textContent = data.basic_info.high_52w.toLocaleString();
+            document.getElementById('low-52w').textContent = data.basic_info.low_52w.toLocaleString();
+            document.getElementById('high-3m').textContent = data.basic_info.high_3m.toLocaleString();
+            document.getElementById('price-range-bar').style.width = `${data.basic_info.price_range_percent}%`;
+            
+            const signals = data.trading_signals;
+            document.getElementById('buy-recommendation').textContent = signals.buy_recommendation;
+            document.getElementById('signal-strength-text').textContent = `${signals.buy_signal_strength}/10`;
+            document.getElementById('signal-strength-bar').style.width = `${signals.buy_signal_strength * 10}%`;
+            document.getElementById('recommended-buy-price').textContent = `${signals.recommended_buy_price.toLocaleString()}원`;
+            document.getElementById('buy-price-explanation').textContent = signals.recommended_buy_price_explanation;
+            
+            const review = data.technical_review;
+            document.getElementById('review-summary').textContent = review.summary;
+            document.getElementById('review-ma').textContent = review.ma_analysis;
+            document.getElementById('review-bb').textContent = review.bb_analysis;
+        };
+        
+        const drawPriceChart = (chartData, etfName) => {
+            const ctx = document.getElementById('price-trend-chart').getContext('2d');
+            if (priceTrendChart) priceTrendChart.destroy();
+            priceTrendChart = new Chart(ctx, {
+                type: 'line',
+                data: { labels: chartData.dates, datasets: [ { label: '주가', data: chartData.prices, borderColor: '#4A90E2', borderWidth: 2.5, pointRadius: 0, tension: 0.1 }, { label: '20일선', data: chartData.ma_20, borderColor: '#e84393', borderWidth: 1.5, pointRadius: 0, tension: 0.1 }, { label: '60일선', data: chartData.ma_60, borderColor: '#6c5ce7', borderWidth: 1.5, pointRadius: 0, tension: 0.1 }, { label: '볼린저 상단', data: chartData.bollinger_upper, borderColor: 'rgba(255, 159, 64, 0.4)', borderWidth: 1, borderDash: [5, 5], pointRadius: 0, fill: '+1' }, { label: '볼린저 하단', data: chartData.bollinger_lower, borderColor: 'rgba(255, 159, 64, 0.4)', borderWidth: 1, borderDash: [5, 5], pointRadius: 0, backgroundColor: 'rgba(255, 159, 64, 0.1)' } ] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { ticks: { callback: v => v.toLocaleString() + '원' } }, x: { ticks: { maxTicksLimit: 10 } } }, plugins: { legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'line' } }, tooltip: { mode: 'index', intersect: false } }, interaction: { mode: 'index', intersect: false } }
+            });
+        };
+
+        const loadETFData = async (ticker) => {
+            setLoading(true);
+            try {
+                const response = await fetch(`/api/krx-data/${ticker}`);
+                if (!response.ok) throw new Error((await response.json()).message || '데이터를 가져오지 못했습니다.');
+                const data = await response.json();
+                updateUI(data);
+                // START: 오류 수정 - drawPriceChart 함수 호출 추가
+                drawPriceChart(data.chart_data, data.ticker_info.name);
+                // END: 오류 수정
+            } catch (error) {
+                console.error('데이터 로드 실패:', error);
+                showError(error.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const etfSelector = document.getElementById('etf-selector');
+            const refreshBtn = document.getElementById('refresh-btn');
+            const handleLoad = () => loadETFData(etfSelector.value);
+            etfSelector.addEventListener('change', handleLoad);
+            refreshBtn.addEventListener('click', handleLoad);
+            handleLoad();
+        });
+    </script>
+</body>
+</html>

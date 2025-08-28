@@ -1,0 +1,28 @@
+/* style.css */
+body {
+    font-family: 'Inter', sans-serif;
+}
+/* Chart.js 툴팁 스타일링 */
+.chartjs-tooltip {
+    background-color: #333;
+    color: white;
+    padding: 8px;
+    border-radius: 6px;
+    font-size: 14px;
+}
+/* 프로그레스 바 애니메이션 */
+.progress-bar-fill {
+    transition: width 1s ease-in-out;
+}
+/* 포트폴리오 슬라이더 스타일 */
+.slider-thumb::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 24px;
+    height: 24px;
+    background: #4A90E2;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    border: 2px solid white;
+    margin-top: -8px;
+}
